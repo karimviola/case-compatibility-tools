@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>أداة توافق الجرابات</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      background-color: #fff3e0;
+      direction: rtl;
+    }
+    h1 {
+      color: #e65100;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input, button, select {
+      padding: 8px;
+      width: 100%;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background-color: #e65100;
+      color: white;
+    }
+    .form-section {
+      background: #fff8f0;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    .logo {
+      height: 50px;
+    }
+    .exists {
+      color: green;
+      font-weight: bold;
+    }
+    .action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 0 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    <img src="https://raw.githubusercontent.com/karimviola/Macca-storee/main/macca-logo-orange.png" alt="Macca Store Logo" class="logo">
+    🔍 أداة توافق الجرابات
+  </h1>
+
+  <div class="form-section">
+    <label for="brandFilter">تصفية حسب النوع:</label>
+    <select id="brandFilter" onchange="filterByBrand()">
+      <option value="">كل الأنواع</option>
+      <option value="iPhone">iPhone</option>
+      <option value="Samsung">Samsung</option>
+      <option value="Oppo">Oppo</option>
+      <option value="Realme">Realme</option>
+      <option value="Xiaomi">Xiaomi</option>
+      <option value="Redmi">Redmi</option>
+      <option value="Infinix">Infinix</option>
+      <option value="Tecno">Tecno</option>
+      <option value="Vivo">Vivo</option>
+      <option value="Huawei">Huawei</option>
+      <option value="Honor">Honor</option>
+    </select>
+    <label for="modelInput">ابحث عن الموديل:</label>
+    <input type="text" id="modelInput" placeholder="مثال: iPhone 11 أو Oppo A76">
+  </div>
+
+  <div class="form-section">
+    <h3>➕ إضافة توفيق جديد</h3>
+    <input type="text" id="addModel1" placeholder="موديل 1">
+    <input type="text" id="addModel2" placeholder="موديل 2">
+    <input type="text" id="addModel3" placeholder="موديل 3 (اختياري)">
+    <input type="text" id="addModel4" placeholder="موديل 4 (اختياري)">
+    <button onclick="addEntry()">➕ أضف التوفيق</button>
+    <button onclick="downloadJSON()">💾 حفظ إلى ملف JSON</button>
+    <input type="file" id="uploadJSON" accept="application/json" onchange="uploadJSON(event)">
+  </div>
+
+  <table id="resultsTable">
+    <thead>
+      <tr>
+        <th>الموديل 1</th>
+        <th>الموديل 2</th>
+        <th>الموديل 3</th>
+        <th>الموديل 4</th>
+        <th>متوفر</th>
+        <th>إجراء</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+  </table>
+
+  <script>
+    let data = [];
+    let editingIndex = null;
+
+    function saveToLocalStorage() {
+      localStorage.setItem("compatibilityData", JSON.stringify(data));
+    }
+
+    function renderTable(filtered = data) {
+      const body = document.getElementById('resultsBody');
+      body.innerHTML = '';
+      if (!filtered.length) {
+        body.innerHTML = '<tr><td colspan="6">لا توجد نتائج</td></tr>';
+        return;
+      }
+      filtered.forEach((d, i) => {
+        const isEditing = editingIndex === i;
+        body.innerHTML += `
+          <tr>
+            <td>${isEditing ? `<input value="${d.m1 || ''}" onchange="editField(${i}, 'm1', this.value)">` : d.m1}</td>
+            <td>${isEditing ? `<input value="${d.m2 || ''}" onchange="editField(${i}, 'm2', this.value)">` : d.m2}</td>
+            <td>${isEditing ? `<input value="${d.m3 || ''}" onchange="editField(${i}, 'm3', this.value)">` : d.m3}</td>
+            <td>${isEditing ? `<input value="${d.m4 || ''}" onchange="editField(${i}, 'm4', this.value)">` : d.m4}</td>
+            <td class="exists">✔ يوجد</td>
+            <td>
+              ${isEditing ? `<button onclick="saveEdit(${i})">💾 حفظ</button>` : `<button onclick="startEdit(${i})">✏ تعديل</button>`}
+              <button onclick="deleteEntry(${i})">🗑 حذف</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function editField(index, field, value) {
+      data[index][field] = value.trim();
+    }
+
+    function startEdit(index) {
+      editingIndex = index;
+      renderTable();
+    }
+
+    function saveEdit(index) {
+      editingIndex = null;
+      saveToLocalStorage();
+      renderTable();
+    }
+
+    function addEntry() {
+      const m1 = document.getElementById('addModel1').value.trim();
+      const m2 = document.getElementById('addModel2').value.trim();
+      const m3 = document.getElementById('addModel3').value.trim();
+      const m4 = document.getElementById('addModel4').value.trim();
+      if (!m1 || !m2) return alert('يرجى إدخال موديل 1 و 2 على الأقل');
+      data.push({ m1, m2, m3, m4 });
+      saveToLocalStorage();
+      renderTable();
+      document.getElementById('addModel1').value = '';
+      document.getElementById('addModel2').value = '';
+      document.getElementById('addModel3').value = '';
+      document.getElementById('addModel4').value = '';
+    }
+
+    function deleteEntry(index) {
+      if (confirm("هل أنت متأكد أنك تريد حذف هذا التوفيق؟")) {
+        data.splice(index, 1);
+        saveToLocalStorage();
+        renderTable();
+      }
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'tofiqat.json';
+      link.click();
+    }
+
+    function uploadJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const json = JSON.parse(e.target.result);
+          if (Array.isArray(json)) {
+            data = json;
+            saveToLocalStorage();
+            renderTable();
+          } else {
+            alert('الملف غير صالح');
+          }
+        } catch (err) {
+          alert('حدث خطأ أثناء قراءة الملف');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function filterByBrand() {
+      const brand = document.getElementById('brandFilter').value.toLowerCase();
+      const filtered = brand ? data.filter(d => {
+        return [d.m1, d.m2, d.m3, d.m4].some(m => m && m.toLowerCase().includes(brand));
+      }) : data;
+      renderTable(filtered);
+    }
+
+    document.getElementById('modelInput').addEventListener('input', e => {
+      const value = e.target.value.toLowerCase();
+      const filtered = data.filter(d =>
+        (d.m1 && d.m1.toLowerCase().includes(value)) ||
+        (d.m2 && d.m2.toLowerCase().includes(value)) ||
+        (d.m3 && d.m3.toLowerCase().includes(value)) ||
+        (d.m4 && d.m4.toLowerCase().includes(value))
+      );
+      renderTable(filtered);
+    });
+
+    window.onload = () => {
+      const local = localStorage.getItem("compatibilityData");
+      if (local) data = JSON.parse(local);
+      renderTable();
+    };
+  </script>
+</body>
+</html>
